@@ -48,6 +48,10 @@ int waitBeforeSwitchOff = 3000;
 // gewartet werden soll, bevor die Sensoren wieder aktiv werden.
 int sleepAfterLightsOff = 5000;
 
+// Gibt an, ob eine Animation erfolgen soll, 
+// solange die Treppe aktiv ist. (Wärend alle Stufen an sind)
+boolean activeAnimation = true;
+
 
 // Shiftregister Settings
 //---------------------------------
@@ -61,10 +65,10 @@ int clockPin = 12;
 int lightPin = 7;
 
 // Gibt ab, ob ein Lichtsensor angeschlossen ist und verwendet werden soll
-boolean lightSensorActive = true;
+boolean lightSensorActive = false;
 // Gibt an, ob der Lichtsensor bei voller Helligkeit den maximal oder minimalwert angibt
 // Wenn der maximalwert (HIGH bei digital, 1023 bei analog) volle Helligkeit bedeutet, 
-// muss der Wert auf false stehen. Gibt der Sensor bei voller Helligkeit 0 zurück muuss hier true gesetzt werden.
+// muss der Wert auf false stehen. Gibt der Sensor bei voller Helligkeit 0 zurÃ¼ck muuss hier true gesetzt werden.
 boolean lightSensorSignalInverted = true;
 // Gibt an ob der Sensor digital oder analog betrieben wird
 boolean lightSensorDigital = true;
@@ -82,6 +86,7 @@ int lightRefreshTime = 5000;
 
 
 
+byte tmpShift;
 
 long unsigned int pirTopHighIn;
 long unsigned int pirBottomHighIn;
@@ -118,6 +123,14 @@ Shys_Sensor sensor  = Shys_Sensor(_mac, _ip, _dns, _gate, _mask, _piAddress);
  */
 void setup() {
   Serial.begin(9600); 
+
+  pinMode(PIR_TOP_PIN, INPUT);
+  pinMode(PIR_BOTTOM_PIN, INPUT);
+  pinMode(latchPin, OUTPUT);
+  pinMode(clockPin, OUTPUT);
+  pinMode(dataPin, OUTPUT);
+  pinMode(lightPin, INPUT);
+  
   delay(700);
 
   Serial.println("HomeControl - Treppensteuerung");
@@ -131,13 +144,7 @@ void setup() {
     sensor.init();
   }
     
-  pinMode(PIR_TOP_PIN, INPUT);
-  pinMode(PIR_BOTTOM_PIN, INPUT);
-  pinMode(latchPin, OUTPUT);
-  pinMode(clockPin, OUTPUT);
-  pinMode(dataPin, OUTPUT);
-  pinMode(lightPin, INPUT);
-  
+
   Serial.print("calibrating PIRs ");
   for(int i = 0; i < calibrationTime*2; i++){
       Serial.print(".");
@@ -157,12 +164,20 @@ void setup() {
   lightsOnAll();
   delay(1500);
   lightsOffAll();
-  
+
   Serial.println(" done");
   Serial.println("SENSOR ACTIVE");
   delay(50);
 }
+  
 
+char * int2bin(byte x)
+{
+ static char buffer[8];
+ for (int i=0; i<8; i++) buffer[7-i] = '0' + ((x & (1 << i)) > 0);
+ buffer[8] ='\0';
+ return buffer;
+}
 
 
 /**
@@ -209,7 +224,7 @@ void loop() {
 /**
  * Wenn der Lichtsensor aktiviert ist, 
  * gibt die Methode an, ob der Sensorwert 
- * über dem eingestellten Wert liegt.
+ * Ã¼ber dem eingestellten Wert liegt.
  * 
  * Bei deaktiviertem Lichtsensor liefert sie immer true.
  */
@@ -224,7 +239,7 @@ boolean isLightvalueOk(){
 
 /**
  * aktualisiert den Sensorwert wenn die Eingestellte
- * Wartezeit seit letzter Aktualisierung überschritten wurde.
+ * Wartezeit seit letzter Aktualisierung Ã¼berschritten wurde.
  */
 void refreshLightSensor(){
   if(lightSensorActive) {
@@ -364,7 +379,9 @@ void moveUp(){
   lightsOnUp();
 
   pirTopLockLow = true;
-    
+  tmpShift = 254;
+  int aktRegister = 1;
+  
   while ( (pirBottomHighIn + maxTimeLightsOn > millis()) && !pirTopMotionActive){
      refreshPIRTopSensorValue();
    
@@ -373,10 +390,31 @@ void moveUp(){
      if(digitalRead(PIR_BOTTOM_PIN) == HIGH){
        pirBottomHighIn = millis();
      }
-     
-     delay(10);
-  }
 
+     if (activeAnimation){
+       Serial.println(int2bin(tmpShift));
+       digitalWrite(latchPin, 0);
+       if(aktRegister==1){
+         shiftOut(255);
+         shiftOut(tmpShift);
+       } else {
+         shiftOut(tmpShift);    
+         shiftOut(255);
+       }
+       delay(30);
+       digitalWrite(latchPin, 1);
+  
+       if(tmpShift>127){
+         tmpShift = tmpShift<<1;
+         tmpShift = tmpShift+1;
+       } else {
+         tmpShift = 254;
+         aktRegister=aktRegister==1?0:1;
+       }
+     }
+     
+     delay(90);        
+  }
   delay(waitBeforeSwitchOff);
 
   lightsOffUp();  
@@ -395,6 +433,8 @@ void moveDown(){
   
   pirBottomLockLow = true;
   pirTopHighIn = millis();
+  tmpShift = 127;
+  int aktRegister = 0;
 
   while ( (pirTopHighIn + maxTimeLightsOn > millis()) && !pirBottomMotionActive){
      refreshPIRBottomSensorValue();
@@ -403,7 +443,29 @@ void moveDown(){
        pirTopHighIn = millis();
      }
 
-     delay(20);
+     if(activeAnimation){
+       Serial.println(int2bin(tmpShift));
+       digitalWrite(latchPin, 0);
+       if(aktRegister==1){
+         shiftOut(255);
+         shiftOut(tmpShift);
+       } else {
+         shiftOut(tmpShift);    
+         shiftOut(255);
+       }
+       delay(30);
+       digitalWrite(latchPin, 1);
+  
+       if(tmpShift<254){
+         tmpShift = tmpShift>>1;
+         tmpShift = tmpShift-128;
+       } else {
+         tmpShift = 127;
+         aktRegister=aktRegister==1?0:1;
+       }
+     }
+          
+     delay(90);
   }
 
   delay(waitBeforeSwitchOff);
@@ -452,7 +514,7 @@ void lightsOnUp(){
     digitalWrite(latchPin, 0);
     shiftOut(0);
     shiftOut(data);
-    delay(100);
+    delay(50);
     digitalWrite(latchPin, 1);
     data=data+additional;
     additional = additional*2;
@@ -465,7 +527,7 @@ void lightsOnUp(){
     digitalWrite(latchPin, 0);
     shiftOut(data);
     shiftOut(255);
-    delay(100);
+    delay(50);
     digitalWrite(latchPin, 1);
     data=data+additional;
     additional = additional*2;
@@ -487,7 +549,7 @@ void lightsOnDown(){
     digitalWrite(latchPin, 0);
     shiftOut(data);
     shiftOut(0);
-    delay(100);
+    delay(50);
     digitalWrite(latchPin, 1);
     data=data+additional;
     additional = additional/2;
@@ -500,7 +562,7 @@ void lightsOnDown(){
     digitalWrite(latchPin, 0);
     shiftOut(255);
     shiftOut(data);
-    delay(100);
+    delay(50);
     digitalWrite(latchPin, 1);
     data=data+additional;
     additional = additional/2;
@@ -521,7 +583,7 @@ void lightsOffUp(){
     digitalWrite(latchPin, 0);
     shiftOut(255);
     shiftOut(255-data);
-    delay(100);
+    delay(50);
     digitalWrite(latchPin, 1);
     additional=additional*2;
     data=data+additional;
@@ -535,7 +597,7 @@ void lightsOffUp(){
     digitalWrite(latchPin, 0);
     shiftOut(255-data);
     shiftOut(0);
-    delay(100);
+    delay(50);
     digitalWrite(latchPin, 1);
     additional=additional*2;
     data=data+additional;
@@ -555,7 +617,7 @@ void lightsOffDown(){
     digitalWrite(latchPin, 0);
     shiftOut(data);
     shiftOut(255);
-    delay(100);
+    delay(50);
     digitalWrite(latchPin, 1);
     data=data-additional;
     additional = additional/2;
@@ -569,7 +631,7 @@ void lightsOffDown(){
     digitalWrite(latchPin, 0);
     shiftOut(0);
     shiftOut(data);
-    delay(100);
+    delay(50);
     digitalWrite(latchPin, 1);
     data=data-additional;
     additional = additional/2;
@@ -601,6 +663,7 @@ void shiftOut(byte dataOut) {
 
   digitalWrite(clockPin, 0);
 }
+
 
 
 
