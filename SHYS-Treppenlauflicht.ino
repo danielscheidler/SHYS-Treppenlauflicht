@@ -2,73 +2,55 @@
 #include <SPI.h>
 #include <Shys_Sensor.h>
 
-
 //--------------------------------------
 // Configuration Start
 //--------------------------------------
 
-//Bewegungsmelder Einstellungen
-//---------------------------------
-//PIR-Data-Pins
+// PIR-Data-Pins
 #define PIR_TOP_PIN 3
 #define PIR_BOTTOM_PIN 4
 
+// Helligkeitssensor-Pin
+int lightPin = 7;
+
+// Schieberegister-Pins
+int latchPin = 8;
+int dataPin = 11;
+int clockPin = 12;
+
+
+// Allgemeine Einstellungen
+//---------------------------------
+// Gibt an, ob eine Animation erfolgen soll, 
+// solange die Treppe aktiv ist. (Während alle Stufen an sind)
+boolean activeAnimation = true;
+// Gibt ab, ob ein Lichtsensor angeschlossen ist und verwendet werden soll
+boolean lightSensorActive = false;
+// Gibt an, ob die Werte an den Server gesendet werden sollen
+boolean sensorValueSendToServerActive = false;
+
+
+
+// Bewegungsmelder Einstellungen
+//---------------------------------
 // PIR-Sensor-ID
 long pirTopSensorId = 22637;
 long pirBottomSensorId = 22638;
 
 //PIR Timings
 // Dauer der Initialisierung
-int calibrationTime = 10;        
+int calibrationTime = 5;        
 
 // Wie viele ms nach der letzten erkannten Bewegung 
 // soll der Bewegungsmelder wieder auf LOW schalten
-long unsigned int pirPause = 5000;  
-
-// Gibt an, ob die Werte an den Server gesendet werden sollen
-// (Langsamer und benoetigt Netzwerkzugriff auf den Server)
-boolean sensorValueSendToServerActive = false;
-
-
-//Speed settings
-// gibt an, wie lang die Pause zwischen den einzelnen Stufen in ms ist
-int switchOnDelayTimeInit = 250;
-int switchOffDelayTimeInit = 350;
-
-//Maximale Wartezeit bis zur automatischen 
-//Abschaltung der LEDs falls nicht der andere
-//Bewegungsmelder aktiviert wird.
-int maxTimeLightsOn = 30000;
-
-// Dauer in ms, die nach der Bewegungserkennung zur Abschaltung
-// gewartet werden soll
-int waitBeforeSwitchOff = 3000;
-
-// Wartezeit in ms, die nach dem Abschalten der Beleuchtung 
-// gewartet werden soll, bevor die Sensoren wieder aktiv werden.
-int sleepAfterLightsOff = 5000;
-
-// Gibt an, ob eine Animation erfolgen soll, 
-// solange die Treppe aktiv ist. (Wärend alle Stufen an sind)
-boolean activeAnimation = true;
-
-
-// Shiftregister Settings
-//---------------------------------
-int latchPin = 8;
-int dataPin = 11;
-int clockPin = 12;
+long unsigned int pirPause = 2000;  
 
 
 // Hellligkeitssensor Settings  *optional
 //-----------------------------------------
-int lightPin = 7;
-
-// Gibt ab, ob ein Lichtsensor angeschlossen ist und verwendet werden soll
-boolean lightSensorActive = false;
 // Gibt an, ob der Lichtsensor bei voller Helligkeit den maximal oder minimalwert angibt
 // Wenn der maximalwert (HIGH bei digital, 1023 bei analog) volle Helligkeit bedeutet, 
-// muss der Wert auf false stehen. Gibt der Sensor bei voller Helligkeit 0 zurÃ¼ck muuss hier true gesetzt werden.
+// muss der Wert auf false stehen. Gibt der Sensor bei voller Helligkeit 0 zurueck muuss hier true gesetzt werden.
 boolean lightSensorSignalInverted = true;
 // Gibt an ob der Sensor digital oder analog betrieben wird
 boolean lightSensorDigital = true;
@@ -79,6 +61,45 @@ int lightValueMax = 300;
 
 // Gibt an, wie viele ms Pause zwischen den Helligkeitsmessungen liegen soll
 int lightRefreshTime = 5000;
+
+
+
+// Geschwindigkeits-Einstellungen
+//---------------------------------
+// gibt an, wie lang die Verzögerung zwischen den einzelnen Stufen beim einschalten in ms ist
+int switchOnDelayTimeInit = 50;
+// gibt an, wie lang die Verzögerung zwischen den einzelnen Stufen beim ausschalten in ms ist
+int switchOffDelayTimeInit = 500;
+// gibt an, wie lang die Verzögerung zwischen den einzelnen Stufen während der Animation in ms ist
+int animationDelayTime = 30;
+
+
+//Maximale Wartezeit bis zur automatischen 
+//Abschaltung der LEDs falls der andere
+//Bewegungsmelder nicht aktiviert wird.
+int maxTimeLightsOn = 30000;
+
+// Dauer in ms, die nach der Bewegungserkennung 
+// bis zur Abschaltung gewartet werden soll
+int waitBeforeSwitchOff = 3000;
+
+// Wartezeit in ms, die nach dem Abschalten der Beleuchtung 
+// gewartet werden soll, bevor die Sensoren wieder aktiviert werden.
+int sleepAfterLightsOff = 5000;
+
+
+
+// Netzwerk-Einstellungen
+// Diese sind nur notwendig wenn sensorValueSendToServerActive aktiviert ist.
+//--------------------------------------
+// IP-Adresse des SmartHome yourself Servers
+byte _piAddress[] =  {192, 168, 1, 98};
+
+byte _mac[]  = {0xDF, 0x8D, 0xCB, 0x37, 0xC4, 0xED  };
+byte _ip[]   = { 192, 168, 1, 28 };
+byte _dns[]  = { 192, 168, 1, 1  };
+byte _gate[] = { 192, 168, 1, 1  };
+byte _mask[] = { 255, 255, 255, 0  };
 
 //--------------------------------------
 // Configuration End
@@ -96,8 +117,8 @@ boolean pirTopTakeLowTime;
 boolean pirTopMotionActive = false;
 boolean pirTopMotionSignalSend = false;
 
-int switchOnDelayTime = 50;
-int switchOffDelayTime = 50;
+int switchOnDelayTime = 20;
+int switchOffDelayTime = 20;
 
 long unsigned int pirBottomLowIn;  
 boolean pirBottomLockLow = true;
@@ -107,14 +128,6 @@ boolean pirBottomMotionSignalSend = false;
 
 int lightValue = 0;
 int lastLightRefreshTime = 0;
-
-byte _piAddress[] =  {192, 168, 1, 98};
-
-byte _mac[]  = {0xDF, 0x8D, 0xCB, 0x37, 0xC4, 0xED  };
-byte _ip[]   = { 192, 168, 1, 28 };
-byte _dns[]  = { 192, 168, 1, 1  };
-byte _gate[] = { 192, 168, 1, 1  };
-byte _mask[] = { 255, 255, 255, 0  };
 
 Shys_Sensor sensor  = Shys_Sensor(_mac, _ip, _dns, _gate, _mask, _piAddress);
 
@@ -143,7 +156,6 @@ void setup() {
   if(sensorValueSendToServerActive){
     sensor.init();
   }
-    
 
   Serial.print("calibrating PIRs ");
   for(int i = 0; i < calibrationTime*2; i++){
@@ -156,14 +168,19 @@ void setup() {
       delay(50);
       digitalWrite(latchPin, 1);
   }
+  
   lightsOnUp();
   lightsOffUp();
   lightsOnDown();
   lightsOffDown();
+
   delay(1000);
   lightsOnAll();
   delay(1500);
   lightsOffAll();
+
+  switchOnDelayTime = switchOnDelayTimeInit;
+  switchOffDelayTime = switchOffDelayTimeInit;
 
   Serial.println(" done");
   Serial.println("SENSOR ACTIVE");
@@ -304,7 +321,7 @@ void refreshPIRTopSensorValue(){
       //Serial.println(" sec"); 
       pirTopMotionActive=true;
       pirTopMotionSignalSend=false;
-      delay(50);
+      delay(10);
     }         
     pirTopHighIn = millis();
     pirTopTakeLowTime = true;
@@ -323,7 +340,7 @@ void refreshPIRTopSensorValue(){
       //Serial.println(" sec");
       pirTopMotionActive=false;
       pirTopMotionSignalSend=false;
-      delay(50);
+      delay(10);
     }
   }  
 }
@@ -341,7 +358,7 @@ void refreshPIRBottomSensorValue(){
       //Serial.println(" sec"); 
       pirBottomMotionActive=true;
       pirBottomMotionSignalSend=false;
-      delay(50);
+      delay(10);
     }         
     pirBottomHighIn = millis();
     pirBottomTakeLowTime = true;
@@ -360,7 +377,7 @@ void refreshPIRBottomSensorValue(){
       //Serial.println(" sec");
       pirBottomMotionActive=false;
       pirBottomMotionSignalSend=false;
-      delay(50);
+      delay(10);
     }
   }  
 }
@@ -401,7 +418,7 @@ void moveUp(){
          shiftOut(tmpShift);    
          shiftOut(255);
        }
-       delay(30);
+       delay(10);
        digitalWrite(latchPin, 1);
   
        if(tmpShift>127){
@@ -411,12 +428,42 @@ void moveUp(){
          tmpShift = 254;
          aktRegister=aktRegister==1?0:1;
        }
+       delay(animationDelayTime);
      }
      
-     delay(90);        
+     delay(10);        
   }
-  delay(waitBeforeSwitchOff);
-
+  
+  long waitTmpms = millis();
+  boolean onEnd = tmpShift == 254;
+  while ( waitTmpms + waitBeforeSwitchOff >= millis() || !onEnd){
+     if (activeAnimation){
+       Serial.println(int2bin(tmpShift));
+       digitalWrite(latchPin, 0);
+       if(aktRegister==1){
+         shiftOut(255);
+         shiftOut(tmpShift);
+       } else {
+         shiftOut(tmpShift);    
+         shiftOut(255);
+       }
+       
+       delay(10);
+       digitalWrite(latchPin, 1);
+  
+       if(tmpShift>127){
+         onEnd = false;
+         tmpShift = tmpShift<<1;
+         tmpShift = tmpShift+1;
+       } else {
+         onEnd = aktRegister==1;
+         tmpShift = 254;
+         aktRegister=aktRegister==1?0:1;
+       }
+       delay(animationDelayTime);
+     }
+  }
+  
   lightsOffUp();  
   pirTopLockLow = true;
   pirBottomLockLow = true;
@@ -438,6 +485,8 @@ void moveDown(){
 
   while ( (pirTopHighIn + maxTimeLightsOn > millis()) && !pirBottomMotionActive){
      refreshPIRBottomSensorValue();
+
+     delay(10);
      
      if(digitalRead(PIR_TOP_PIN) == HIGH){
        pirTopHighIn = millis();
@@ -453,7 +502,7 @@ void moveDown(){
          shiftOut(tmpShift);    
          shiftOut(255);
        }
-       delay(30);
+       delay(10);
        digitalWrite(latchPin, 1);
   
        if(tmpShift<254){
@@ -463,13 +512,42 @@ void moveDown(){
          tmpShift = 127;
          aktRegister=aktRegister==1?0:1;
        }
+       delay(animationDelayTime);
      }
           
-     delay(90);
+     delay(10);
   }
 
-  delay(waitBeforeSwitchOff);
   
+  long waitTmpms = millis();
+  boolean onEnd = tmpShift == 127;
+  while ( waitTmpms + waitBeforeSwitchOff > millis() || !onEnd){
+     if (activeAnimation){
+       Serial.println(int2bin(tmpShift));
+       digitalWrite(latchPin, 0);
+       if(aktRegister==1){
+         shiftOut(255);
+         shiftOut(tmpShift);
+       } else {
+         shiftOut(tmpShift);    
+         shiftOut(255);
+       }
+       delay(10);
+       digitalWrite(latchPin, 1);
+  
+       if(tmpShift<254){
+         onEnd = false;
+         tmpShift = tmpShift>>1;
+         tmpShift = tmpShift-128;
+       } else {
+         onEnd = aktRegister==1;
+         tmpShift = 127;
+         aktRegister=aktRegister==1?0:1;
+       }      
+     }
+     delay(animationDelayTime);
+  }
+    
   lightsOffDown();  
   pirTopLockLow = true;
   pirBottomLockLow = true;
@@ -663,8 +741,6 @@ void shiftOut(byte dataOut) {
 
   digitalWrite(clockPin, 0);
 }
-
-
 
 
 
