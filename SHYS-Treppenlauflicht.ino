@@ -10,6 +10,9 @@
 #define PIR_TOP_PIN 3
 #define PIR_BOTTOM_PIN 4
 
+// All LEDs on Switch
+#define ALL_ON_SWITCH_PIN 5
+
 // Helligkeitssensor-Pin
 int lightPin = 7;
 
@@ -19,15 +22,25 @@ int dataPin = 11;
 int clockPin = 12;
 
 
+
+
 // Allgemeine Einstellungen
 //---------------------------------
 // Gibt an, ob eine Animation erfolgen soll, 
 // solange die Treppe aktiv ist. (Während alle Stufen an sind)
 boolean activeAnimation = true;
+
 // Gibt ab, ob ein Lichtsensor angeschlossen ist und verwendet werden soll
 boolean lightSensorActive = false;
+
+// Gibt an, ob ein Dauer-An Schalter angeschlossen wurde 
+// Sollte hier ohne Schalter am Pin hier trotzdem true eingestellt sein, 
+// blinken die LEDs zufällig, da der INPUT-Pin ohne Pull-Down einen Zufallswert liefert!
+boolean allOnSwitchActive = false;
+
 // Gibt an, ob die Werte an den Server gesendet werden sollen
 boolean sensorValueSendToServerActive = false;
+
 
 
 
@@ -144,6 +157,7 @@ void setup() {
 
   pinMode(PIR_TOP_PIN, INPUT);
   pinMode(PIR_BOTTOM_PIN, INPUT);
+  pinMode(ALL_ON_SWITCH_PIN, INPUT);
   pinMode(latchPin, OUTPUT);
   pinMode(clockPin, OUTPUT);
   pinMode(dataPin, OUTPUT);
@@ -206,6 +220,8 @@ char * int2bin(byte x)
  * Standard Loop Methode
  */
 void loop() {
+  checkSwitchAllOn();
+  
   refreshSensors();
   
   if(isLightvalueOk()){
@@ -238,6 +254,23 @@ void loop() {
 }
 
 
+
+
+/**
+ * Dauer-An Schalter
+ */
+ void checkSwitchAllOn(){
+   if(!allOnSwitchActive){
+     return;
+   }
+   if(digitalRead(ALL_ON_SWITCH_PIN)==HIGH){
+     lightsOnAll();
+   }
+   while(digitalRead(ALL_ON_SWITCH_PIN)==HIGH){
+     delay(200);
+   }
+   lightsOffAll();
+ }
 
 
 /* *************************************************
