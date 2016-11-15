@@ -33,20 +33,25 @@ boolean sensorValueSendToServerActive = false;
 
 // Bewegungsmelder Einstellungen
 //---------------------------------
-// PIR-Sensor-ID
-long pirTopSensorId = 22637;
-long pirBottomSensorId = 22638;
+// Gibt an, ob der Lichtsensor bei Bewegung HIGH oder LOW zurück gibt
+// Wenn HIGH eine erkannte Bewegung bedeutet, muss der Wert auf true stehen, sonst auf false.
+boolean pirSensorSignalInverted = false;
 
 //PIR Timings
 // Dauer der Initialisierung
-int calibrationTime = 5;        
+int calibrationTime = 10;        
 
 // Wie viele ms nach der letzten erkannten Bewegung 
 // soll der Bewegungsmelder wieder auf LOW schalten
 long unsigned int pirPause = 2000;  
 
+// PIR-Sensor-IDs (nur notwendig wenn sensorValueSendToServerActive=true)
+long pirTopSensorId = 22637;
+long pirBottomSensorId = 22638;
 
-// Hellligkeitssensor Settings  *optional
+
+// Hellligkeitssensor Settings  *optional 
+// (nur notwendig wenn lightSensorActive=true)
 //-----------------------------------------
 // Gibt an, ob der Lichtsensor bei voller Helligkeit den maximal oder minimalwert angibt
 // Wenn der maximalwert (HIGH bei digital, 1023 bei analog) volle Helligkeit bedeutet, 
@@ -67,11 +72,11 @@ int lightRefreshTime = 5000;
 // Geschwindigkeits-Einstellungen
 //---------------------------------
 // gibt an, wie lang die Verzögerung zwischen den einzelnen Stufen beim einschalten in ms ist
-int switchOnDelayTimeInit = 50;
+int switchOnDelayTimeInit = 100;
 // gibt an, wie lang die Verzögerung zwischen den einzelnen Stufen beim ausschalten in ms ist
 int switchOffDelayTimeInit = 500;
 // gibt an, wie lang die Verzögerung zwischen den einzelnen Stufen während der Animation in ms ist
-int animationDelayTime = 30;
+int animationDelayTime = 70;
 
 
 //Maximale Wartezeit bis zur automatischen 
@@ -162,11 +167,11 @@ void setup() {
       Serial.print(".");
       delay(450);
      
-      digitalWrite(latchPin, 0);
+      digitalWrite(latchPin, LOW);
       shiftOut(random(0, 255));
       shiftOut(random(0, 255));
       delay(50);
-      digitalWrite(latchPin, 1);
+      digitalWrite(latchPin, HIGH);
   }
   
   lightsOnUp();
@@ -313,7 +318,7 @@ void refreshSensors(){
  *  Check PIR Sensor
  */
 void refreshPIRTopSensorValue(){
-  if(digitalRead(PIR_TOP_PIN) == HIGH){
+  if(digitalRead(PIR_TOP_PIN) == pirSensorSignalInverted?LOW:HIGH){
     if(pirTopLockLow){  
       pirTopLockLow = false;            
       //Serial.print("Top-motion detected at ");
@@ -327,7 +332,7 @@ void refreshPIRTopSensorValue(){
     pirTopTakeLowTime = true;
   }
   
-  if(digitalRead(PIR_TOP_PIN) == LOW){       
+  if(digitalRead(PIR_TOP_PIN) == pirSensorSignalInverted?HIGH:LOW){       
     if(pirTopTakeLowTime){
       pirTopLowIn = millis();
       pirTopTakeLowTime = false;
@@ -350,7 +355,7 @@ void refreshPIRTopSensorValue(){
  *  Check PIR Sensor
  */
 void refreshPIRBottomSensorValue(){
-  if(digitalRead(PIR_BOTTOM_PIN) == HIGH){
+  if(digitalRead(PIR_BOTTOM_PIN) == pirSensorSignalInverted?LOW:HIGH){
     if(pirBottomLockLow){  
       pirBottomLockLow = false;            
       //Serial.print("Bottom-motion detected at ");
@@ -364,7 +369,7 @@ void refreshPIRBottomSensorValue(){
     pirBottomTakeLowTime = true;
   }
   
-  if(digitalRead(PIR_BOTTOM_PIN) == LOW){       
+  if(digitalRead(PIR_BOTTOM_PIN) == pirSensorSignalInverted?HIGH:LOW){       
     if(pirBottomTakeLowTime){
       pirBottomLowIn = millis();
       pirBottomTakeLowTime = false;
@@ -404,13 +409,13 @@ void moveUp(){
    
      delay(10);
 
-     if(digitalRead(PIR_BOTTOM_PIN) == HIGH){
+     if(digitalRead(PIR_BOTTOM_PIN) == pirSensorSignalInverted?LOW:HIGH){
        pirBottomHighIn = millis();
      }
 
      if (activeAnimation){
        Serial.println(int2bin(tmpShift));
-       digitalWrite(latchPin, 0);
+       digitalWrite(latchPin, LOW);
        if(aktRegister==1){
          shiftOut(255);
          shiftOut(tmpShift);
@@ -418,8 +423,7 @@ void moveUp(){
          shiftOut(tmpShift);    
          shiftOut(255);
        }
-       delay(10);
-       digitalWrite(latchPin, 1);
+       digitalWrite(latchPin, HIGH);
   
        if(tmpShift>127){
          tmpShift = tmpShift<<1;
@@ -439,17 +443,15 @@ void moveUp(){
   while ( waitTmpms + waitBeforeSwitchOff >= millis() || !onEnd){
      if (activeAnimation){
        Serial.println(int2bin(tmpShift));
-       digitalWrite(latchPin, 0);
+       digitalWrite(latchPin, LOW);
        if(aktRegister==1){
          shiftOut(255);
          shiftOut(tmpShift);
        } else {
          shiftOut(tmpShift);    
          shiftOut(255);
-       }
-       
-       delay(10);
-       digitalWrite(latchPin, 1);
+       }       
+       digitalWrite(latchPin, HIGH);
   
        if(tmpShift>127){
          onEnd = false;
@@ -488,13 +490,13 @@ void moveDown(){
 
      delay(10);
      
-     if(digitalRead(PIR_TOP_PIN) == HIGH){
+     if(digitalRead(PIR_TOP_PIN) == pirSensorSignalInverted?LOW:HIGH){
        pirTopHighIn = millis();
      }
 
      if(activeAnimation){
        Serial.println(int2bin(tmpShift));
-       digitalWrite(latchPin, 0);
+       digitalWrite(latchPin, LOW);
        if(aktRegister==1){
          shiftOut(255);
          shiftOut(tmpShift);
@@ -502,8 +504,7 @@ void moveDown(){
          shiftOut(tmpShift);    
          shiftOut(255);
        }
-       delay(10);
-       digitalWrite(latchPin, 1);
+       digitalWrite(latchPin, HIGH);
   
        if(tmpShift<254){
          tmpShift = tmpShift>>1;
@@ -524,7 +525,7 @@ void moveDown(){
   while ( waitTmpms + waitBeforeSwitchOff > millis() || !onEnd){
      if (activeAnimation){
        Serial.println(int2bin(tmpShift));
-       digitalWrite(latchPin, 0);
+       digitalWrite(latchPin, LOW);
        if(aktRegister==1){
          shiftOut(255);
          shiftOut(tmpShift);
@@ -532,8 +533,7 @@ void moveDown(){
          shiftOut(tmpShift);    
          shiftOut(255);
        }
-       delay(10);
-       digitalWrite(latchPin, 1);
+       digitalWrite(latchPin, HIGH);
   
        if(tmpShift<254){
          onEnd = false;
@@ -560,11 +560,11 @@ void moveDown(){
  * Schaltet alle LEDs auf einmal aus
  */
 void lightsOffAll(){
-  digitalWrite(latchPin, 0);
+  digitalWrite(latchPin, LOW);
   shiftOut(0);
   shiftOut(0);
   delay(100);
-  digitalWrite(latchPin, 1);
+  digitalWrite(latchPin, HIGH);
 }
 
 
@@ -572,11 +572,11 @@ void lightsOffAll(){
  * Schaltet alle LEDs auf einmal ein
  */
 void lightsOnAll(){
-  digitalWrite(latchPin, 0);
+  digitalWrite(latchPin, LOW);
   shiftOut(255);
   shiftOut(255);
   delay(100);
-  digitalWrite(latchPin, 1);
+  digitalWrite(latchPin, HIGH);
 }
 
 
@@ -589,11 +589,10 @@ void lightsOnUp(){
   int data = 0;
   int additional = 1;
   for (int j = 0; j <= 8; j++) {
-    digitalWrite(latchPin, 0);
+    digitalWrite(latchPin, LOW);
     shiftOut(0);
     shiftOut(data);
-    delay(50);
-    digitalWrite(latchPin, 1);
+    digitalWrite(latchPin, HIGH);
     data=data+additional;
     additional = additional*2;
     delay(switchOnDelayTime);
@@ -602,11 +601,10 @@ void lightsOnUp(){
   data = 1;
   additional = 2;
   for (int j = 0; j < 8; j++) {
-    digitalWrite(latchPin, 0);
+    digitalWrite(latchPin, LOW);
     shiftOut(data);
     shiftOut(255);
-    delay(50);
-    digitalWrite(latchPin, 1);
+    digitalWrite(latchPin, HIGH);
     data=data+additional;
     additional = additional*2;
     delay(switchOnDelayTime);
@@ -624,11 +622,10 @@ void lightsOnDown(){
   int data = 128;
   int additional = 64;
   for (int j = 0; j <= 8; j++) {
-    digitalWrite(latchPin, 0);
+    digitalWrite(latchPin, LOW);
     shiftOut(data);
     shiftOut(0);
-    delay(50);
-    digitalWrite(latchPin, 1);
+    digitalWrite(latchPin, HIGH);
     data=data+additional;
     additional = additional/2;
     delay(switchOnDelayTime);
@@ -637,11 +634,10 @@ void lightsOnDown(){
   data = 128;
   additional = 64;
   for (int j = 0; j < 8; j++) {
-    digitalWrite(latchPin, 0);
+    digitalWrite(latchPin, LOW);
     shiftOut(255);
     shiftOut(data);
-    delay(50);
-    digitalWrite(latchPin, 1);
+    digitalWrite(latchPin, HIGH);
     data=data+additional;
     additional = additional/2;
     delay(switchOnDelayTime);
@@ -658,11 +654,10 @@ void lightsOffUp(){
   int data = 1;
   int additional = 1;
   for (int j = 0; j < 8; j++) {
-    digitalWrite(latchPin, 0);
+    digitalWrite(latchPin, LOW);
     shiftOut(255);
     shiftOut(255-data);
-    delay(50);
-    digitalWrite(latchPin, 1);
+    digitalWrite(latchPin, HIGH);
     additional=additional*2;
     data=data+additional;
     delay(switchOffDelayTime);
@@ -672,11 +667,10 @@ void lightsOffUp(){
   data = 1;
   additional = 1;
   for (int j = 0; j <= 8; j++) {
-    digitalWrite(latchPin, 0);
+    digitalWrite(latchPin, LOW);
     shiftOut(255-data);
     shiftOut(0);
-    delay(50);
-    digitalWrite(latchPin, 1);
+    digitalWrite(latchPin, HIGH);
     additional=additional*2;
     data=data+additional;
     delay(switchOffDelayTime);
@@ -692,11 +686,10 @@ void lightsOffDown(){
   int data = 255;
   int additional = 128;
   for (int j = 0; j < 8; j++) {
-    digitalWrite(latchPin, 0);
+    digitalWrite(latchPin, LOW);
     shiftOut(data);
     shiftOut(255);
-    delay(50);
-    digitalWrite(latchPin, 1);
+    digitalWrite(latchPin, HIGH);
     data=data-additional;
     additional = additional/2;
     delay(switchOffDelayTime);
@@ -706,11 +699,10 @@ void lightsOffDown(){
   data = 255;
   additional = 128;
   for (int j = 0; j <= 8; j++) {
-    digitalWrite(latchPin, 0);
+    digitalWrite(latchPin, LOW);
     shiftOut(0);
     shiftOut(data);
-    delay(50);
-    digitalWrite(latchPin, 1);
+    digitalWrite(latchPin, HIGH);
     data=data-additional;
     additional = additional/2;
     delay(switchOffDelayTime);
@@ -741,6 +733,3 @@ void shiftOut(byte dataOut) {
 
   digitalWrite(clockPin, 0);
 }
-
-
-
