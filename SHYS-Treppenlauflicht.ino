@@ -447,7 +447,7 @@ void moveUp(){
      }
 
      if (activeAnimation){
-       Serial.println(int2bin(tmpShift));
+       //Serial.println(int2bin(tmpShift));
        digitalWrite(latchPin, LOW);
        if(aktRegister==1){
          shiftOut(255);
@@ -475,7 +475,7 @@ void moveUp(){
   boolean onEnd = tmpShift == 254;
   while ( waitTmpms + waitBeforeSwitchOff >= millis() || !onEnd){
      if (activeAnimation){
-       Serial.println(int2bin(tmpShift));
+       //Serial.println(int2bin(tmpShift));
        digitalWrite(latchPin, LOW);
        if(aktRegister==1){
          shiftOut(255);
@@ -528,7 +528,7 @@ void moveDown(){
      }
 
      if(activeAnimation){
-       Serial.println(int2bin(tmpShift));
+      // Serial.println(int2bin(tmpShift));
        digitalWrite(latchPin, LOW);
        if(aktRegister==1){
          shiftOut(255);
@@ -557,7 +557,7 @@ void moveDown(){
   boolean onEnd = tmpShift == 127;
   while ( waitTmpms + waitBeforeSwitchOff > millis() || !onEnd){
      if (activeAnimation){
-       Serial.println(int2bin(tmpShift));
+       //Serial.println(int2bin(tmpShift));
        digitalWrite(latchPin, LOW);
        if(aktRegister==1){
          shiftOut(255);
@@ -619,13 +619,18 @@ void lightsOnAll(){
  * data = 1, 3, 7, 15, 31...
  */
 void lightsOnUp(){
-  int data = 0;
-  int additional = 1;
-  for (int j = 0; j <= 8; j++) {
+  Serial.println("UP");
+  int data = 1;
+  int additional = 2;
+  for (int j = 0; j < 8; j++) {
     digitalWrite(latchPin, LOW);
     shiftOut(0);
     shiftOut(data);
     digitalWrite(latchPin, HIGH);
+
+//    Serial.print(int2bin(0));
+//    Serial.println(int2bin(data));
+
     data=data+additional;
     additional = additional*2;
     delay(switchOnDelayTime);
@@ -638,6 +643,10 @@ void lightsOnUp(){
     shiftOut(data);
     shiftOut(255);
     digitalWrite(latchPin, HIGH);
+
+//    Serial.print(int2bin(data));
+//    Serial.println(int2bin(255));
+    
     data=data+additional;
     additional = additional*2;
     delay(switchOnDelayTime);
@@ -652,13 +661,18 @@ void lightsOnUp(){
  * data = 128, 192, 224,...
  */
 void lightsOnDown(){
+  Serial.println("DOWN");
   int data = 128;
   int additional = 64;
-  for (int j = 0; j <= 8; j++) {
+  for (int j = 0; j < 8; j++) {
     digitalWrite(latchPin, LOW);
     shiftOut(data);
     shiftOut(0);
     digitalWrite(latchPin, HIGH);
+
+//    Serial.print(int2bin(data));
+//    Serial.println(int2bin(0));
+    
     data=data+additional;
     additional = additional/2;
     delay(switchOnDelayTime);
@@ -671,6 +685,10 @@ void lightsOnDown(){
     shiftOut(255);
     shiftOut(data);
     digitalWrite(latchPin, HIGH);
+
+//    Serial.print(int2bin(255));
+//    Serial.println(int2bin(data));
+
     data=data+additional;
     additional = additional/2;
     delay(switchOnDelayTime);
@@ -691,6 +709,10 @@ void lightsOffUp(){
     shiftOut(255);
     shiftOut(255-data);
     digitalWrite(latchPin, HIGH);
+
+//    Serial.print(int2bin(255));
+//    Serial.println(int2bin(255-data));
+
     additional=additional*2;
     data=data+additional;
     delay(switchOffDelayTime);
@@ -699,11 +721,15 @@ void lightsOffUp(){
   
   data = 1;
   additional = 1;
-  for (int j = 0; j <= 8; j++) {
+  for (int j = 0; j < 8; j++) {
     digitalWrite(latchPin, LOW);
     shiftOut(255-data);
     shiftOut(0);
     digitalWrite(latchPin, HIGH);
+    
+//    Serial.print(int2bin(255-data));
+//    Serial.println(int2bin(0));
+
     additional=additional*2;
     data=data+additional;
     delay(switchOffDelayTime);
@@ -716,26 +742,33 @@ void lightsOffUp(){
  * data = 255, 128, 64, 32, ...
  */
 void lightsOffDown(){
-  int data = 255;
-  int additional = 128;
+  int data = 127;
+  int additional = 64;
   for (int j = 0; j < 8; j++) {
     digitalWrite(latchPin, LOW);
     shiftOut(data);
     shiftOut(255);
     digitalWrite(latchPin, HIGH);
+
+//    Serial.print(int2bin(data));
+//    Serial.println(int2bin(255));
+    
     data=data-additional;
     additional = additional/2;
     delay(switchOffDelayTime);
   }
   
-  
-  data = 255;
-  additional = 128;
-  for (int j = 0; j <= 8; j++) {
+  data = 127;
+  additional = 64;
+  for (int j = 0; j < 8; j++) {
     digitalWrite(latchPin, LOW);
     shiftOut(0);
     shiftOut(data);
     digitalWrite(latchPin, HIGH);
+
+//    Serial.print(int2bin(0));
+//    Serial.println(int2bin(data));
+
     data=data-additional;
     additional = additional/2;
     delay(switchOffDelayTime);
