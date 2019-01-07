@@ -13,6 +13,8 @@
 // All LEDs on Switch
 #define ALL_ON_SWITCH_PIN 5
 
+#define RELAIS_PIN 6
+
 // Helligkeitssensor-Pin
 int lightPin = 7;
 
@@ -37,6 +39,10 @@ boolean lightSensorActive = false;
 // Sollte hier ohne Schalter am Pin hier trotzdem true eingestellt sein, 
 // blinken die LEDs zufällig, da der INPUT-Pin ohne Pull-Down einen Zufallswert liefert!
 boolean allOnSwitchActive = false;
+
+// Gibt an, ob ein Relais verwendet werden soll, um das 12V Netzteil für die LEDs abzuschalten, 
+// wenn die Treppe deaktiviert ist. (Dann benötigt der Arduino zwingend eine unabhängige Stromquelle!)
+boolean useRelaisForPowerSupply = false;
 
 // Gibt an, ob die Werte an den Server gesendet werden sollen
 boolean sensorValueSendToServerActive = false;
@@ -158,6 +164,7 @@ void setup() {
   pinMode(PIR_TOP_PIN, INPUT);
   pinMode(PIR_BOTTOM_PIN, INPUT);
   pinMode(ALL_ON_SWITCH_PIN, INPUT);
+  pinMode(RELAIS_PIN, OUTPUT);
   pinMode(latchPin, OUTPUT);
   pinMode(clockPin, OUTPUT);
   pinMode(dataPin, OUTPUT);
@@ -431,6 +438,8 @@ void refreshPIRBottomSensorValue(){
  * Steuert den Ablauf, jemand die Treppe herauf geht
  */
 void moveUp(){
+  switchRelais(true);
+  
   lightsOnUp();
 
   pirTopLockLow = true;
@@ -467,7 +476,7 @@ void moveUp(){
        }
        delay(animationDelayTime);
      }
-     
+
      delay(10);        
   }
   
@@ -503,6 +512,8 @@ void moveUp(){
   pirTopLockLow = true;
   pirBottomLockLow = true;
 
+  switchRelais(false);
+
   delay(sleepAfterLightsOff);
 }
 
@@ -511,6 +522,8 @@ void moveUp(){
  * Steuert den Ablauf, jemand die Treppe hinunter geht
  */
 void moveDown(){
+  switchRelais(true);
+  
   lightsOnDown();
   
   pirBottomLockLow = true;
@@ -585,6 +598,8 @@ void moveDown(){
   pirTopLockLow = true;
   pirBottomLockLow = true;
 
+  switchRelais(false);
+
   delay(sleepAfterLightsOff);
 }
 
@@ -598,6 +613,8 @@ void lightsOffAll(){
   shiftOut(0);
   delay(100);
   digitalWrite(latchPin, HIGH);
+
+  switchRelais(false);
 }
 
 
@@ -605,6 +622,8 @@ void lightsOffAll(){
  * Schaltet alle LEDs auf einmal ein
  */
 void lightsOnAll(){
+  switchRelais(true);
+
   digitalWrite(latchPin, LOW);
   shiftOut(255);
   shiftOut(255);
@@ -798,4 +817,17 @@ void shiftOut(byte dataOut) {
   }
 
   digitalWrite(clockPin, 0);
+}
+
+
+/**
+ * Schaltet (falls aktiviert) das Relais je nach dem übergebenen Wert für activate  ein bzw. aus.
+ */
+void switchRelais(boolean activate) {
+  if(useRelaisForPowerSupply){
+      digitalWrite(RELAIS_PIN, activate?1:0);
+      if (activate){
+        delay(250);  
+      }
+  }
 }
